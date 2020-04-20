@@ -9,9 +9,9 @@ Setup
 
 Installing python library dependencies
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-::
+.. code-block:: bash
 
-       $ sudo pip3 install google-auth-oauthlib
+       sudo pip3 install google-auth-oauthlib
 
 Obtaining a Google Photos API key
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -21,18 +21,18 @@ Obtain a Google Photos API key (Client ID and Client Secret) by following the in
 
 **NOTE** When selecting your application type in Step 4 of "Request an OAuth 2.0 client ID", please select "Other". There's also no need to carry out step 5 in that section.
 
-Configure Pibooth to use google api
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Configure Pibooth to use pibooth-google-photo
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-1 clone or download the plugin
+1. Clone or download the plugin
 
 .. code-block:: bash
 
     git clone https://github.com/pibooth/pibooth-google-photo.git
 
-1. Open client_id.json file
-2. Replace `YOUR_CLIENT_ID` in the client_id.json file with the provided Client ID.
-3. Replace `YOUR_CLIENT_SECRET` in the client_id.json file with the provided Client Secret.
+2. Open client_id.json file
+3. Replace `YOUR_CLIENT_ID` in the client_id.json file with the provided Client ID.
+4. Replace `YOUR_CLIENT_SECRET` in the client_id.json file with the provided Client Secret.
 
 ``client_id.json is like this``
 
@@ -50,11 +50,14 @@ Configure Pibooth to use google api
        }
    }
 
-4. Append plugin path to pibooth config
+5. Append plugin path to pibooth config and append 'google_gallery_name' key, if you want to change gallery name
 
 .. code-block:: ini
 
+    [GENERAL]
     # Path to a custom pibooth plugin (list of paths accepted)
     plugins = path/to/pibooth-google-photo/pibooth_google_plugin.py
+    # Change default gallery name (Pibooth)
+    google_gallery_name = Pibooth
 
 6. At first connection allow application to use google photo with open browser windows

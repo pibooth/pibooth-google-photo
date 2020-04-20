@@ -19,9 +19,14 @@ def pibooth_startup(app):
                                    credentials=None)
 
 @pibooth.hookimpl
-def state_processing_exit(app):
+def state_processing_exit(app, cfg):
    name = app.previous_picture_file
-   app.google_photo.upload_photos([name], "Pibooth")
+   try:
+       google_name = cfg.get('GENERAL', 'google_gallery_name')
+   except KeyError as e:
+       LOGGER.warning("No gallery name detected, use default value 'Pibooth'")
+       google_name = "Pibooth"
+   app.google_photo.upload_photos([name],google_name)
 
 ###########################################################################
 ## Class
