@@ -27,6 +27,7 @@ Configure Pibooth to use google api
 1 clone or download the plugin
 
 .. code-block:: bash
+
     git clone https://github.com/pibooth/pibooth-google-photo.git
 
 1. Open client_id.json file
