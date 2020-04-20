@@ -24,19 +24,24 @@ Obtain a Google Photos API key (Client ID and Client Secret) by following the in
 Configure Pibooth to use google api
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-1. Save a client_id.json file and open
+1 clone or download the plugin
+
+.. code-block:: bash
+    git clone https://github.com/pibooth/pibooth-google-photo.git
+
+1. Open client_id.json file
 2. Replace `YOUR_CLIENT_ID` in the client_id.json file with the provided Client ID.
 3. Replace `YOUR_CLIENT_SECRET` in the client_id.json file with the provided Client Secret.
 
-``client_id.json``
+``client_id.json is like this``
 
 .. code-block:: json
 
    {
    "installed":
        {
-           "client_id":"YOUR_CLIENT_ID",
-           "client_secret":"YOUR_CLIENT_SECRET",
+           "client_id":"8723982792-sdjfhdkjhvfkd76.apps.googleusercontent.com",
+           "client_secret":"HJAHZhjhi_HJI789798giEdPIbJ",
            "auth_uri":"https://accounts.google.com/o/oauth2/auth",
            "token_uri":"https://www.googleapis.com/oauth2/v3/token",
            "auth_provider_x509_cert_url":"https://www.googleapis.com/oauth2/v1/certs",
@@ -44,6 +49,11 @@ Configure Pibooth to use google api
        }
    }
 
-4. Replace `'path/to/client_id.json'` on `pibooth_google_photo.py` to the good path of your `client_id.json`
-5. Append plugin to pibooth config
+4. Append plugin path to pibooth config
+
+.. code-block:: ini
+
+    # Path to a custom pibooth plugin (list of paths accepted)
+    plugins = path/to/pibooth-google-photo/pibooth_google_plugin.py
+
 6. At first connection allow application to use google photo with open browser windows

@@ -6,12 +6,16 @@ import os.path
 import pibooth
 from pibooth.utils import LOGGER
 
+client_id_file = os.path.join(os.path.dirname(os.path.realpath(__file__)) + "/client_id.json")
+if not os.path.exists(client_id_file) or os.path.getsize(client_id_file) == 0:
+    raise FileNotFoundError("Can't load 'client_id.json' file on default path:{}".format(client_id_file))
+
 ###########################################################################
 ## HOOK pibooth
 ###########################################################################
 @pibooth.hookimpl
 def pibooth_startup(app):
-   app.google_photo = GoogleUpload(client_id='path/to/client_id.json',
+   app.google_photo = GoogleUpload(client_id=client_id_file,
                                    credentials=None)
 
 @pibooth.hookimpl
