@@ -7,6 +7,7 @@ from google.auth.transport.requests import AuthorizedSession
 from google.oauth2.credentials import Credentials
 import json
 import os.path
+import requests
 import pibooth
 from pibooth.utils import LOGGER
 
@@ -26,6 +27,7 @@ def pibooth_configure(cfg):
 
 @pibooth.hookimpl
 def pibooth_startup(app):
+    """Create the GoogleUpload instances."""
     try:
         app.google_photo = GoogleUpload(client_id=cfg.get('GOOGLE', 'client_id_file'),
                                         credentials=None)
@@ -33,9 +35,9 @@ def pibooth_startup(app):
         LOGGER.error("No GOOGLE:client_id_file detected on pibooth config file")
 
 
-
 @pibooth.hookimpl
 def state_processing_exit(app, cfg):
+    """Upload picture to google photo album"""
     name = app.previous_picture_file
     try:
         google_name = cfg.get('GOOGLE', 'album_name')
@@ -65,6 +67,14 @@ class GoogleUpload(object):
         if not os.path.exists(self.client_id_file) or os.path.getsize(self.client_id_file) == 0:
             LOGGER.error("Can't load json file \'%s\'", self.client_id_file)
         self._get_authorized_session()
+
+    def _is_internet(self):
+        try:
+            requests.get('https://www.google.com/').status_code
+            return True
+        except:
+            LOGGER.warning("No internet connection!!!!")
+            return False
 
     def _auth(self):
         """open browser to create credentials"""
@@ -159,7 +169,7 @@ class GoogleUpload(object):
         self._create_or_retrieve_album()
 
         # interrupt upload if an upload was requested but could not be created
-        if self.album_name and not self.album_id:
+        if self.album_name and not self.album_id or self._is_internet():
             LOGGER.error("Interrupt upload see previous error!!!!")
             return
 
