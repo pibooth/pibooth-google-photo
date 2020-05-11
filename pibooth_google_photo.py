@@ -11,7 +11,7 @@ import requests
 import pibooth
 from pibooth.utils import LOGGER
 
-__version__ = "1.0.0"
+__version__ = "0.0.1"
 
 
 ###########################################################################
@@ -26,7 +26,7 @@ def pibooth_configure(cfg):
 
 
 @pibooth.hookimpl
-def pibooth_startup(app):
+def pibooth_startup(app, cfg):
     """Create the GoogleUpload instances."""
     try:
         app.google_photo = GoogleUpload(client_id=cfg.get('GOOGLE', 'client_id_file'),
@@ -49,7 +49,7 @@ def state_processing_exit(app, cfg):
 
 ###########################################################################
 ## Class
-###########################################################################
+################0###########################################################
 class GoogleUpload(object):
 
     def __init__(self, client_id=None, credentials=None):
