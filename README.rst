@@ -1,38 +1,52 @@
-********************
+
+====================
 pibooth-google-photo
-********************
+====================
 
-Pibooth plugin to add the upload of pictures to google photo 
+|PythonVersions| |PypiPackage| |Downloads|
 
-Setup
------
+``pibooth-google-photo`` is a plugin for the `pibooth <https://github.com/pibooth/pibooth>`_
+application.
 
-Installing python library dependencies
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-.. code-block:: bash
+It add the upload of pictures to `google photo gallery <https://photos.google.com/>`_
 
-       sudo pip3 install google-auth-oauthlib
+Install
+-------
+
+::
+
+    $ pip3 install pibooth-google-photo
+
 
 Obtaining a Google Photos API key
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Obtain a Google Photos API key (Client ID and Client Secret) by following the instructions on \
-[Getting started with Google Photos REST APIs](https://developers.google.com/photos/library/guides/get-started)
+`Getting started with Google Photos REST APIs <https://developers.google.com/photos/library/guides/get-started>`_
 
 **NOTE** When selecting your application type in Step 4 of "Request an OAuth 2.0 client ID", please select "Other". There's also no need to carry out step 5 in that section.
 
-Configure Pibooth to use pibooth-google-photo
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Configuration
+-------------
 
-1. Clone or download the plugin
+This is the extra configuration options that can be added in the ``pibooth``
+configuration):
 
-.. code-block:: bash
+.. code-block:: ini
 
-    git clone https://github.com/pibooth/pibooth-google-photo.git
+    [GOOGLE]
+    # The name of album on gallery
+    album_name = Pibooth
+    # The client_id.json file download from google API
+    client_id_file = path/to/client_id.json
 
-2. Open client_id.json file
-3. Replace `YOUR_CLIENT_ID` in the client_id.json file with the provided Client ID.
-4. Replace `YOUR_CLIENT_SECRET` in the client_id.json file with the provided Client Secret.
+.. note:: Edit the configuration by running the command ``pibooth --config``.
+
+
+Note
+-----
+At first connection allow application to use google photo with open browser windows
+
 
 ``client_id.json is like this``
 
@@ -50,14 +64,16 @@ Configure Pibooth to use pibooth-google-photo
        }
    }
 
-5. Append plugin path to pibooth config and append 'google_gallery_name' key, if you want to change gallery name
 
-.. code-block:: ini
 
-    [GENERAL]
-    # Path to a custom pibooth plugin (list of paths accepted)
-    plugins = path/to/pibooth-google-photo/pibooth_google_plugin.py
-    # Change default gallery name (Pibooth)
-    google_gallery_name = Pibooth
+.. |PythonVersions| image:: https://img.shields.io/badge/python-2.7+ / 3.6+-red.svg
+   :target: https://www.python.org/downloads
+   :alt: Python 2.7+/3.6+
 
-6. At first connection allow application to use google photo with open browser windows
+.. |PypiPackage| image:: https://badge.fury.io/py/pibooth-google-photo.svg
+   :target: https://pypi.org/project/pibooth-google-photo
+   :alt: PyPi package
+
+.. |Downloads| image:: https://img.shields.io/pypi/dm/pibooth-google-photo?color=purple
+   :target: https://pypi.org/project/pibooth-google-photo
+   :alt: PyPi downloads
