@@ -11,7 +11,7 @@ import requests
 import pibooth
 from pibooth.utils import LOGGER
 
-__version__ = "1.0.0"
+__version__ = "1.0.2"
 
 
 ###########################################################################
@@ -22,31 +22,27 @@ def pibooth_configure(cfg):
     """Declare the new configuration options"""
     cfg.add_option('GOOGLE', 'album_name', "Pibooth",
                    "The name of album on gallery")
-    cfg.add_option('GOOGLE', 'client_id_file', 'client_id.json',
+    cfg.add_option('GOOGLE', 'client_id_file', '',
                    "The client_id.json file download from google API")
-
+    cfg.add_option('GOOGLE', 'activate', True, "Option to allow disable plugin",
+                   "activate upload", ['True', 'False'])
 
 @pibooth.hookimpl
 def pibooth_startup(app, cfg):
     """Create the GoogleUpload instances."""
-    try:
-        app.google_photo = GoogleUpload(client_id=cfg.get('GOOGLE', 'client_id_file'),
-                                        credentials=None)
-    except KeyError as e:
-        LOGGER.error("No GOOGLE:client_id_file detected on pibooth config file")
-        exit()
+    activate_state = cfg.getboolean('GOOGLE', 'activate')
+    app.google_photo = GoogleUpload(client_id=cfg.getpath('GOOGLE', 'client_id_file'),
+                                        credentials=None, activate=activate_state)
+
 
 
 @pibooth.hookimpl
 def state_processing_exit(app, cfg):
     """Upload picture to google photo album"""
     name = app.previous_picture_file
-    try:
-        google_name = cfg.get('GOOGLE', 'album_name')
-    except KeyError as e:
-        LOGGER.warning("No gallery name detected, use default value 'Pibooth'")
-        google_name = "Pibooth"
-    app.google_photo.upload_photos([name], google_name)
+    google_name = cfg.get('GOOGLE', 'album_name')
+    activate_state = cfg.getboolean('GOOGLE', 'activate')
+    app.google_photo.upload_photos([name], google_name, activate_state)
 
 
 ###########################################################################
@@ -54,7 +50,16 @@ def state_processing_exit(app, cfg):
 ################0###########################################################
 class GoogleUpload(object):
 
-    def __init__(self, client_id=None, credentials=None):
+    def __init__(self, client_id=None, credentials=None, activate=True):
+        """Initialize GoogleUpload instance
+
+        :param client_id: file download from google API
+        :type client_id: file
+        :param credentials: file create at first run to keep allow API use
+        :type credentials: file
+        :param activate: use to disable the plugin
+        :type activate: bool
+        """
         self.scopes = ['https://www.googleapis.com/auth/photoslibrary',
                        'https://www.googleapis.com/auth/photoslibrary.sharing']
 
@@ -66,11 +71,15 @@ class GoogleUpload(object):
         self.session = None
         self.album_id = None
         self.album_name = None
+        self.activate = activate
         if not os.path.exists(self.client_id_file) or os.path.getsize(self.client_id_file) == 0:
-            LOGGER.error("Can't load json file \'%s\'", self.client_id_file)
-        self._get_authorized_session()
+            LOGGER.error("Can't load json file \'%s\' please check GOOGLE:client_id_file on pibooth config file (DISABLE PLUGIN)", self.client_id_file)
+            self.activate = False
+        if self.activate and self._is_internet():
+            self._get_authorized_session()
 
     def _is_internet(self):
+        """check internet connexion"""
         try:
             requests.get('https://www.google.com/').status_code
             return True
@@ -91,7 +100,7 @@ class GoogleUpload(object):
                                                  open_browser=True)
 
     def _get_authorized_session(self):
-
+        """Check if credentials file exists"""
         # check the default path of save credentials to allow keep None
         if self.google_credentials is None:
             self.google_credentials = os.path.join(os.path.dirname(self.client_id_file) + "/google_credentials.dat")
@@ -113,6 +122,7 @@ class GoogleUpload(object):
                 LOGGER.debug("Error loading auth tokens - Incorrect format")
 
     def _save_cred(self):
+        "save credentials file next to client id file to keep use API without allow acces"
         if self.credentials:
             cred_dict = {
                 'token': self.credentials.token,
@@ -166,11 +176,26 @@ class GoogleUpload(object):
                             Server Response: %s", self.album_name, resp)
                 self.album_id = None
 
-    def upload_photos(self, photo_file_list, album_name):
+    def upload_photos(self, photo_file_list, album_name, activate):
+        """Funtion use to upload list of photos to google album
+
+        :param photo_file_list: list of photos name with full path
+        :type photo_file_list: file
+        :param album_name: name of albums to upload
+        :type album_name: str
+        :param activate: use to disable the upload
+        :type activate: bool"""
+        self.activate = activate
         # interrupt upload no internet
         if not self._is_internet():
             LOGGER.error("Interrupt upload no internet connexion!!!!")
             return
+        # if plugin is disable
+        if not self.activate:
+            return
+        # plugin is disable at startup but activate after so check credential file
+        elif not self.credentials:
+            self._get_authorized_session()
 
         self.album_name = album_name
         self._create_or_retrieve_album()
