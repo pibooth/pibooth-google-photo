@@ -11,12 +11,13 @@ import requests
 import pibooth
 from pibooth.utils import LOGGER
 
-__version__ = "0.0.1"
+__version__ = "1.0.0"
 
 
 ###########################################################################
 ## HOOK pibooth
 ###########################################################################
+@pibooth.hookimpl
 def pibooth_configure(cfg):
     """Declare the new configuration options"""
     cfg.add_option('GOOGLE', 'album_name', "Pibooth",
