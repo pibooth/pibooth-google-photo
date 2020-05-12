@@ -40,7 +40,9 @@ configuration):
     album_name = Pibooth
     # The client_id.json file download from google API
     client_id_file = path/to/client_id.json
-
+    # Option to allow disable plugin
+    activate = True
+    
 .. note:: Edit the configuration by running the command ``pibooth --config``.
 
 
