@@ -33,6 +33,7 @@ def pibooth_startup(app, cfg):
                                         credentials=None)
     except KeyError as e:
         LOGGER.error("No GOOGLE:client_id_file detected on pibooth config file")
+        exit()
 
 
 @pibooth.hookimpl
@@ -165,12 +166,17 @@ class GoogleUpload(object):
                 self.album_id = None
 
     def upload_photos(self, photo_file_list, album_name):
+        # interrupt upload no internet
+        if not self._is_internet():
+            LOGGER.error("Interrupt upload no internet connexion!!!!")
+            return
+
         self.album_name = album_name
         self._create_or_retrieve_album()
 
-        # interrupt upload if an upload was requested but could not be created
-        if self.album_name and not self.album_id or self._is_internet():
-            LOGGER.error("Interrupt upload see previous error!!!!")
+        # interrupt upload if no album id can't read or create
+        if self.album_name and not self.album_id:
+            LOGGER.error("Interrupt upload album not found!!!!")
             return
 
         self.session.headers["Content-type"] = "application/octet-stream"

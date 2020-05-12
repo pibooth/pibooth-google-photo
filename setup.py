@@ -42,9 +42,9 @@ def main():
             'camera',
             'photobooth'
         ],
-        py_modules=['pibooth-google-photo'],
+        py_modules=['pibooth_google_photo'],
         install_requires=[
-            'pibooth>=1.2.0',
+            'pibooth>=2.0.0',
             'google-auth-oauthlib>=0.4.1'
         ],
         options={
