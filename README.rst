@@ -8,7 +8,7 @@ pibooth-google-photo
 ``pibooth-google-photo`` is a plugin for the `pibooth <https://github.com/pibooth/pibooth>`_
 application.
 
-This plugin adds the photo upload to a `google photo gallery <https://photos.google.com/>`_.
+This plugin adds the photo upload to a `Google Photos <https://photos.google.com/>`_.
 It requires an internet connection to work
 
 Install
@@ -36,13 +36,15 @@ configuration):
 .. code-block:: ini
 
     [GOOGLE]
-    # The name of album on gallery
-    album_name = Pibooth
-    # The client_id.json file download from google API
-    client_id_file = path/to/client_id.json
-    # Option to allow disable plugin
+    # Enable upload on Google Photos
     activate = True
-    
+
+    # Album where pictures are uploaded
+    album_name = Pibooth
+
+    # Credentials file downloaded from Google API
+    client_id_file =
+
 .. note:: Edit the configuration by running the command ``pibooth --config``.
 
 
