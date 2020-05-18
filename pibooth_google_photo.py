@@ -1,39 +1,45 @@
 # -*- coding: utf-8 -*-
 
-"""Pibooth plugin for google gallery upload."""
+"""Pibooth plugin for Google Photos upload."""
 
+import json
+import os.path
+
+import requests
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import AuthorizedSession
 from google.oauth2.credentials import Credentials
-import json
-import os.path
-import requests
+
 import pibooth
 from pibooth.utils import LOGGER
+
 
 __version__ = "1.0.2"
 
 
 ###########################################################################
-## HOOK pibooth
+# HOOK pibooth
 ###########################################################################
+
 @pibooth.hookimpl
 def pibooth_configure(cfg):
     """Declare the new configuration options"""
+    cfg.add_option('GOOGLE', 'activate', True,
+                   "Enable upload on Google Photos",
+                   "Enable upload", ['True', 'False'])
     cfg.add_option('GOOGLE', 'album_name', "Pibooth",
-                   "The name of album on gallery")
+                   "Album where pictures are uploaded",
+                   "Album name", "Pibooth")
     cfg.add_option('GOOGLE', 'client_id_file', '',
-                   "The client_id.json file download from google API")
-    cfg.add_option('GOOGLE', 'activate', True, "Option to allow disable plugin",
-                   "activate upload", ['True', 'False'])
+                   "Credentials file downloaded from Google API")
+
 
 @pibooth.hookimpl
 def pibooth_startup(app, cfg):
-    """Create the GoogleUpload instances."""
+    """Create the GoogleUpload instance."""
     activate_state = cfg.getboolean('GOOGLE', 'activate')
     app.google_photo = GoogleUpload(client_id=cfg.getpath('GOOGLE', 'client_id_file'),
-                                        credentials=None, activate=activate_state)
-
+                                    credentials=None, activate=activate_state)
 
 
 @pibooth.hookimpl
@@ -46,8 +52,10 @@ def state_processing_exit(app, cfg):
 
 
 ###########################################################################
-## Class
-################0###########################################################
+# Class
+###########################################################################
+
+
 class GoogleUpload(object):
 
     def __init__(self, client_id=None, credentials=None, activate=True):
@@ -73,7 +81,8 @@ class GoogleUpload(object):
         self.album_name = None
         self.activate = activate
         if not os.path.exists(self.client_id_file) or os.path.getsize(self.client_id_file) == 0:
-            LOGGER.error("Can't load json file \'%s\' please check GOOGLE:client_id_file on pibooth config file (DISABLE PLUGIN)", self.client_id_file)
+            LOGGER.error(
+                "Can't load json file '%s' please check GOOGLE:client_id_file on pibooth config file (DISABLE PLUGIN)", self.client_id_file)
             self.activate = False
         if self.activate and self._is_internet():
             self._get_authorized_session()
@@ -83,7 +92,7 @@ class GoogleUpload(object):
         try:
             requests.get('https://www.google.com/').status_code
             return True
-        except:
+        except requests.ConnectionError:
             LOGGER.warning("No internet connection!!!!")
             return False
 
@@ -134,13 +143,13 @@ class GoogleUpload(object):
                 'client_secret': self.credentials.client_secret
             }
 
-            with open(self.google_credentials, 'w') as f:
-                print(json.dumps(cred_dict), file=f)
+            with open(self.google_credentials, 'w') as fp:
+                json.dump(cred_dict, fp)
 
-    def get_albums(self, appCreatedOnly=False):
-        """#Generator to loop through all albums"""
+    def get_albums(self, app_created_only=False):
+        """Generator to loop through all albums"""
         params = {
-            'excludeNonAppCreatedData': appCreatedOnly
+            'excludeNonAppCreatedData': app_created_only
         }
         while True:
             albums = self.session.get('https://photoslibrary.googleapis.com/v1/albums', params=params).json()
@@ -161,7 +170,7 @@ class GoogleUpload(object):
             for a in self.get_albums(True):
                 if a["title"].lower() == self.album_name.lower():
                     self.album_id = a["id"]
-                    LOGGER.info("Uploading into EXISTING photo album -- \'%s\'", self.album_name)
+                    LOGGER.info("Uploading into EXISTING photo album -- '%s'", self.album_name)
         if self.album_id is None:
             # No matches, create new album
             create_album_body = json.dumps({"album": {"title": self.album_name}})
@@ -169,11 +178,11 @@ class GoogleUpload(object):
             resp = self.session.post('https://photoslibrary.googleapis.com/v1/albums', create_album_body).json()
             LOGGER.debug("Server response: %s", resp)
             if "id" in resp:
-                LOGGER.info("Uploading into NEW photo album -- \'%s\'", self.album_name)
+                LOGGER.info("Uploading into NEW photo album -- '%s'", self.album_name)
                 self.album_id = resp['id']
             else:
-                LOGGER.error("Could not find or create photo album \'{0}\'.\
-                            Server Response: %s", self.album_name, resp)
+                LOGGER.error("Could not find or create photo album '%s'.\
+                             Server Response: %s", self.album_name, resp)
                 self.album_id = None
 
     def upload_photos(self, photo_file_list, album_name, activate):
@@ -184,7 +193,8 @@ class GoogleUpload(object):
         :param album_name: name of albums to upload
         :type album_name: str
         :param activate: use to disable the upload
-        :type activate: bool"""
+        :type activate: bool
+        """
         self.activate = activate
         # interrupt upload no internet
         if not self._is_internet():
@@ -214,12 +224,12 @@ class GoogleUpload(object):
                 photo_file = open(photo_file_name, mode='rb')
                 photo_bytes = photo_file.read()
             except OSError as err:
-                LOGGER.error("Could not read file \'%s\' -- %s", photo_file_name, err)
+                LOGGER.error("Could not read file '%s' -- %s", photo_file_name, err)
                 continue
 
             self.session.headers["X-Goog-Upload-File-Name"] = os.path.basename(photo_file_name)
 
-            LOGGER.info("Uploading photo -- \'%s\'", photo_file_name)
+            LOGGER.info("Uploading photo -- '%s'", photo_file_name)
 
             upload_token = self.session.post('https://photoslibrary.googleapis.com/v1/uploads', photo_bytes)
 
@@ -236,24 +246,24 @@ class GoogleUpload(object):
                 if "newMediaItemResults" in resp:
                     status = resp["newMediaItemResults"][0]["status"]
                     if status.get("code") and (status.get("code") > 0):
-                        LOGGER.error("Could not add \'%s\' to library -- %s", os.path.basename(photo_file_name),
+                        LOGGER.error("Could not add '%s' to library -- %s", os.path.basename(photo_file_name),
                                      status["message"])
                     else:
                         LOGGER.info(
-                            "Added \'%s\' to library and album \'%s\' ", os.path.basename(photo_file_name),
+                            "Added '%s' to library and album '%s' ", os.path.basename(photo_file_name),
                             album_name)
                 else:
                     LOGGER.error(
-                        "Could not add \'%s\' to library. Server Response -- %s", os.path.basename(photo_file_name),
+                        "Could not add '%s' to library. Server Response -- %s", os.path.basename(photo_file_name),
                         resp)
 
             else:
-                LOGGER.error("Could not upload \'%s\'. Server Response - %s", os.path.basename(photo_file_name),
+                LOGGER.error("Could not upload '%s'. Server Response -- %s", os.path.basename(photo_file_name),
                              upload_token)
 
         try:
-            del (self.session.headers["Content-type"])
-            del (self.session.headers["X-Goog-Upload-Protocol"])
-            del (self.session.headers["X-Goog-Upload-File-Name"])
+            del self.session.headers["Content-type"]
+            del self.session.headers["X-Goog-Upload-Protocol"]
+            del self.session.headers["X-Goog-Upload-File-Name"]
         except KeyError:
             pass
