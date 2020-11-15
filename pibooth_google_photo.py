@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
 
-"""Pibooth plugin for Google Photos upload."""
+"""Pibooth plugin to upload pictures on Google Photos."""
 
 import json
 import os.path
 
 import requests
 from google_auth_oauthlib.flow import InstalledAppFlow
-from google.auth.transport.requests import AuthorizedSession
+from google.auth.transport.requests import AuthorizedSession, Request
 from google.oauth2.credentials import Credentials
 
 import pibooth
@@ -17,16 +17,9 @@ from pibooth.utils import LOGGER
 __version__ = "1.0.2"
 
 
-###########################################################################
-# HOOK pibooth
-###########################################################################
-
 @pibooth.hookimpl
 def pibooth_configure(cfg):
     """Declare the new configuration options"""
-    cfg.add_option('GOOGLE', 'activate', True,
-                   "Enable upload on Google Photos",
-                   "Enable upload", ['True', 'False'])
     cfg.add_option('GOOGLE', 'album_name', "Pibooth",
                    "Album where pictures are uploaded",
                    "Album name", "Pibooth")
@@ -36,234 +29,219 @@ def pibooth_configure(cfg):
 
 @pibooth.hookimpl
 def pibooth_startup(app, cfg):
-    """Create the GoogleUpload instance."""
-    activate_state = cfg.getboolean('GOOGLE', 'activate')
-    app.google_photo = GoogleUpload(client_id=cfg.getpath('GOOGLE', 'client_id_file'),
-                                    credentials=None, activate=activate_state)
+    """Create the GooglePhotosUpload instance."""
+    app.google_photos = GooglePhotosApi(cfg.getpath('GOOGLE', 'client_id_file'))
 
 
 @pibooth.hookimpl
 def state_processing_exit(app, cfg):
     """Upload picture to google photo album"""
-    name = app.previous_picture_file
-    google_name = cfg.get('GOOGLE', 'album_name')
-    activate_state = cfg.getboolean('GOOGLE', 'activate')
-    app.google_photo.upload_photos([name], google_name, activate_state)
+    pictures = (app.previous_picture_file,)
+    app.google_photos.upload(pictures, cfg.get('GOOGLE', 'album_name'))
 
 
-###########################################################################
-# Class
-###########################################################################
+class GooglePhotosApi(object):
 
+    """Class handling connections to Google Photos.
 
-class GoogleUpload(object):
+    A file with YOUR_CLIENT_ID and YOUR_CLIENT_SECRET is required, go to
+    https://developers.google.com/photos/library/guides/get-started .
 
-    def __init__(self, client_id=None, credentials=None, activate=True):
-        """Initialize GoogleUpload instance
+    A credentials file ``credentials_filename`` is generated at first run to store
+    permanently the autorizations to us Google API.
 
-        :param client_id: file download from google API
-        :type client_id: file
-        :param credentials: file create at first run to keep allow API use
-        :type credentials: file
-        :param activate: use to disable the plugin
-        :type activate: bool
-        """
-        self.scopes = ['https://www.googleapis.com/auth/photoslibrary',
-                       'https://www.googleapis.com/auth/photoslibrary.sharing']
+    :param client_id: file generated from google API
+    :type client_id: str
+    :param credentials_filename: name of the file to store authorization
+    :type credentials_filename: str
+    """
 
-        # file to store authorization
-        self.google_credentials = credentials
-        # file with YOUR_CLIENT_ID and YOUR_CLIENT_SECRET generate on google
-        self.client_id_file = client_id
-        self.credentials = None
-        self.session = None
-        self.album_id = None
-        self.album_name = None
-        self.activate = activate
+    URL = 'https://photoslibrary.googleapis.com/v1'
+    SCOPES = ['https://www.googleapis.com/auth/photoslibrary',
+              'https://www.googleapis.com/auth/photoslibrary.sharing']
+
+    def __init__(self, client_id_file, credentials_filename="google_credentials.dat"):
+        self.client_id_file = client_id_file
+        self.credentials_file = os.path.join(os.path.dirname(self.client_id_file), credentials_filename)
+
+        self.activated = True
         if not os.path.exists(self.client_id_file) or os.path.getsize(self.client_id_file) == 0:
-            LOGGER.error(
-                "Can't load json file '%s' please check GOOGLE:client_id_file on pibooth config file (DISABLE PLUGIN)", self.client_id_file)
-            self.activate = False
-        if self.activate and self._is_internet():
-            self._get_authorized_session()
+            if self.client_id_file:
+                LOGGER.error("Can not load [GOOGLE][client_id_file]='%s' please check config",
+                             self.client_id_file)
+            self.activated = False
 
-    def _is_internet(self):
-        """check internet connexion"""
-        try:
-            requests.get('https://www.google.com/').status_code
-            return True
-        except requests.ConnectionError:
-            LOGGER.warning("No internet connection!!!!")
-            return False
+        self._albums_cache = {}  # Keep cache to avoid multiple request
+        self._credentials = None
+        if self.activated and self.is_reachable():
+            self._session = self._get_authorized_session()
+        else:
+            self._session = None
 
     def _auth(self):
-        """open browser to create credentials"""
-        flow = InstalledAppFlow.from_client_secrets_file(
-            self.client_id_file,
-            scopes=self.scopes)
+        """Open browser to create credentials."""
+        flow = InstalledAppFlow.from_client_secrets_file(self.client_id_file, scopes=self.SCOPES)
+        return flow.run_local_server(port=0)
 
-        self.credentials = flow.run_local_server(host='localhost',
-                                                 port=8080,
-                                                 authorization_prompt_message="",
-                                                 success_message='The auth flow is complete; you may close this window.',
-                                                 open_browser=True)
+    def _save_credentials(self, credentials):
+        """Save credentials in a file to use API without need to allow acces."""
+        with open(self.credentials_file, 'w') as fp:
+            fp.write(credentials.to_json())
 
     def _get_authorized_session(self):
-        """Check if credentials file exists"""
-        # check the default path of save credentials to allow keep None
-        if self.google_credentials is None:
-            self.google_credentials = os.path.join(os.path.dirname(self.client_id_file) + "/google_credentials.dat")
-        # if first instance of application:
-        if not os.path.exists(self.google_credentials) or \
-                os.path.getsize(self.google_credentials) == 0:
-            self._auth()
-            self.session = AuthorizedSession(self.credentials)
-            LOGGER.debug("First run of application create credentials file %s", self.google_credentials)
+        """Create credentials file if required and open a new session."""
+        if not os.path.exists(self.credentials_file) or \
+                os.path.getsize(self.credentials_file) == 0:
+            self._credentials = self._auth()
+            LOGGER.debug("First use of pibooth-google-photo: generate credentials file %s", self.credentials_file)
             try:
-                self._save_cred()
+                self._save_credentials(self._credentials)
             except OSError as err:
-                LOGGER.debug("Could not save auth tokens - %s", err)
+                LOGGER.warning("Can not save Google Photos credentials in '%s': %s", self.credentials_file, err)
         else:
             try:
-                self.credentials = Credentials.from_authorized_user_file(self.google_credentials, self.scopes)
-                self.session = AuthorizedSession(self.credentials)
+                self._credentials = Credentials.from_authorized_user_file(self.credentials_file, self.SCOPES)
+                if self._credentials.expired:
+                    self._credentials.refresh(Request())
+                    self._save_credentials(self._credentials)
             except ValueError:
-                LOGGER.debug("Error loading auth tokens - Incorrect format")
+                LOGGER.debug("Error loading Google Photos OAuth tokens: incorrect format")
 
-    def _save_cred(self):
-        "save credentials file next to client id file to keep use API without allow acces"
-        if self.credentials:
-            cred_dict = {
-                'token': self.credentials.token,
-                'refresh_token': self.credentials.refresh_token,
-                'id_token': self.credentials.id_token,
-                'scopes': self.credentials.scopes,
-                'token_uri': self.credentials.token_uri,
-                'client_id': self.credentials.client_id,
-                'client_secret': self.credentials.client_secret
-            }
+        if self._credentials:
+            return AuthorizedSession(self._credentials)
+        return None
 
-            with open(self.google_credentials, 'w') as fp:
-                json.dump(cred_dict, fp)
+    def is_reachable(self):
+        """Check if Google Photos is reachable."""
+        try:
+            return requests.get('https://photos.google.com').status_code == 200
+        except requests.ConnectionError:
+            return False
 
     def get_albums(self, app_created_only=False):
-        """Generator to loop through all albums"""
+        """Generator to loop through all Google Photos albums."""
         params = {
             'excludeNonAppCreatedData': app_created_only
         }
         while True:
-            albums = self.session.get('https://photoslibrary.googleapis.com/v1/albums', params=params).json()
-            LOGGER.debug("Server response: %s", albums)
+            albums = self._session.get(self.URL + '/albums', params=params).json()
+            LOGGER.debug("Google Photos server response: %s", albums)
+
             if 'albums' in albums:
-                for a in albums["albums"]:
-                    yield a
+                for album in albums["albums"]:
+                    yield album
                 if 'nextPageToken' in albums:
                     params["pageToken"] = albums["nextPageToken"]
                 else:
-                    return
+                    return  # close generator
             else:
-                return
+                return  # close generator
 
-    def _create_or_retrieve_album(self):
-        """Find albums created by this app to see if one matches album_title"""
-        if self.album_name and self.album_id is None:
-            for a in self.get_albums(True):
-                if a["title"].lower() == self.album_name.lower():
-                    self.album_id = a["id"]
-                    LOGGER.info("Uploading into EXISTING photo album -- '%s'", self.album_name)
-        if self.album_id is None:
-            # No matches, create new album
-            create_album_body = json.dumps({"album": {"title": self.album_name}})
-            # print(create_album_body)
-            resp = self.session.post('https://photoslibrary.googleapis.com/v1/albums', create_album_body).json()
-            LOGGER.debug("Server response: %s", resp)
-            if "id" in resp:
-                LOGGER.info("Uploading into NEW photo album -- '%s'", self.album_name)
-                self.album_id = resp['id']
-            else:
-                LOGGER.error("Could not find or create photo album '%s'.\
-                             Server Response: %s", self.album_name, resp)
-                self.album_id = None
+    def get_album_id(self, album_name):
+        """Return the album ID if exists else None."""
+        if album_name.lower() in self._albums_cache:
+            return self._albums_cache[album_name.lower()]["id"]
 
-    def upload_photos(self, photo_file_list, album_name, activate):
-        """Funtion use to upload list of photos to google album
+        for album in self.get_albums(True):
+            title = album["title"].lower()
+            self._albums_cache[title] = album
+            if title == album_name.lower():
+                LOGGER.info("Found existing Google Photos album '%s'", album_name)
+                return album["id"]
+        return None
 
-        :param photo_file_list: list of photos name with full path
-        :type photo_file_list: file
+    def create_album(self, album_name):
+        """Create a new album and return its ID."""
+        LOGGER.info("Creating a new Google Photos album '%s'", album_name)
+        create_album_body = json.dumps({"album": {"title": album_name}})
+
+        resp = self._session.post(self.URL + '/albums', create_album_body).json()
+        LOGGER.debug("Google Photos server response: %s", resp)
+
+        if "id" in resp:
+            return resp['id']
+
+        LOGGER.error("Can not create Google Photos album '%s'", album_name)
+        return None
+
+    def upload(self, photo_files, album_name):
+        """Upload a list of pictures files to the given Google Photos album.
+
+        :param photo_files: list of photos name with full path
+        :type photo_files: file
         :param album_name: name of albums to upload
         :type album_name: str
-        :param activate: use to disable the upload
-        :type activate: bool
         """
-        self.activate = activate
-        # interrupt upload no internet
-        if not self._is_internet():
-            LOGGER.error("Interrupt upload no internet connexion!!!!")
-            return
-        # if plugin is disable
-        if not self.activate:
-            return
-        # plugin is disable at startup but activate after so check credential file
-        elif not self.credentials:
-            self._get_authorized_session()
-
-        self.album_name = album_name
-        self._create_or_retrieve_album()
-
-        # interrupt upload if no album id can't read or create
-        if self.album_name and not self.album_id:
-            LOGGER.error("Interrupt upload album not found!!!!")
+        if not self.activated:
+            # Invalid credentials file
             return
 
-        self.session.headers["Content-type"] = "application/octet-stream"
-        self.session.headers["X-Goog-Upload-Protocol"] = "raw"
+        if not self.is_reachable():
+            LOGGER.error("Google Photos upload failure: no internet connexion!")
+            return
 
-        for photo_file_name in photo_file_list:
+        if not self._credentials:
+            # Plugin was disabled at startup but activated after
+            self._session = self._get_authorized_session()
+
+        album_id = self.get_album_id(album_name)
+        if not album_id:
+            album_id = self.create_album(album_name)
+        if not album_id:
+            LOGGER.error("Google Photos upload failure: album '%s' not found!", album_name)
+            return
+
+        self._session.headers["Content-type"] = "application/octet-stream"
+        self._session.headers["X-Goog-Upload-Protocol"] = "raw"
+
+        for filename in photo_files:
 
             try:
-                photo_file = open(photo_file_name, mode='rb')
-                photo_bytes = photo_file.read()
+                with open(filename, mode='rb') as fp:
+                    data = fp.read()
             except OSError as err:
-                LOGGER.error("Could not read file '%s' -- %s", photo_file_name, err)
+                LOGGER.error("Google Photos upload failure: can not read file '%s': %s", filename, err)
                 continue
 
-            self.session.headers["X-Goog-Upload-File-Name"] = os.path.basename(photo_file_name)
+            self._session.headers["X-Goog-Upload-File-Name"] = os.path.basename(filename)
 
-            LOGGER.info("Uploading photo -- '%s'", photo_file_name)
+            LOGGER.info("Uploading picture '%s' to Google Photos", filename)
+            upload_token = self._session.post(self.URL + '/uploads', data)
 
-            upload_token = self.session.post('https://photoslibrary.googleapis.com/v1/uploads', photo_bytes)
+            if upload_token.status_code == 200 and upload_token.content:
 
-            if (upload_token.status_code == 200) and upload_token.content:
+                create_body = json.dumps({"albumId": album_id,
+                                          "newMediaItems": [
+                                              {"description": "",
+                                               "simpleMediaItem": {"uploadToken": upload_token.content.decode()}
+                                              }
+                                          ]}, indent=4)
 
-                create_body = json.dumps({"albumId": self.album_id, "newMediaItems": [
-                    {"description": "", "simpleMediaItem": {"uploadToken": upload_token.content.decode()}}]}, indent=4)
-
-                resp = self.session.post('https://photoslibrary.googleapis.com/v1/mediaItems:batchCreate',
-                                         create_body).json()
-
-                LOGGER.debug("Server response: %s", resp)
+                resp = self._session.post(self.URL + '/mediaItems:batchCreate', create_body).json()
+                LOGGER.debug("Google Photos server response: %s", resp)
 
                 if "newMediaItemResults" in resp:
                     status = resp["newMediaItemResults"][0]["status"]
                     if status.get("code") and (status.get("code") > 0):
-                        LOGGER.error("Could not add '%s' to library -- %s", os.path.basename(photo_file_name),
-                                     status["message"])
+                        LOGGER.error("Google Photos upload failure: can not add '%s' to library: %s",
+                                     os.path.basename(filename), status["message"])
                     else:
-                        LOGGER.info(
-                            "Added '%s' to library and album '%s' ", os.path.basename(photo_file_name),
-                            album_name)
+                        LOGGER.info("Google Photos upload successful: '%s' added to album '%s'",
+                                    os.path.basename(filename), album_name)
                 else:
-                    LOGGER.error(
-                        "Could not add '%s' to library. Server Response -- %s", os.path.basename(photo_file_name),
-                        resp)
+                    LOGGER.error("Google Photos upload failure: can not add '%s' to library",
+                                 os.path.basename(filename))
 
+            elif upload_token.status_code != 200:
+                LOGGER.error("Google Photos upload failure: can not connect to '%s' (HTTP error %s)",
+                             self.URL, upload_token.status_code)
             else:
-                LOGGER.error("Could not upload '%s'. Server Response -- %s", os.path.basename(photo_file_name),
-                             upload_token)
+                LOGGER.error("Google Photos upload failure: no response content from server '%s'",
+                             self.URL)
 
         try:
-            del self.session.headers["Content-type"]
-            del self.session.headers["X-Goog-Upload-Protocol"]
-            del self.session.headers["X-Goog-Upload-File-Name"]
+            del self._session.headers["Content-type"]
+            del self._session.headers["X-Goog-Upload-Protocol"]
+            del self._session.headers["X-Goog-Upload-File-Name"]
         except KeyError:
             pass
