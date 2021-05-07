@@ -26,8 +26,6 @@ Here below the new configuration options available in the `pibooth`_ configurati
 .. code-block:: ini
 
     [GOOGLE]
-    # Enable upload on Google Photos
-    activate = True
 
     # Album where pictures are uploaded
     album_name = Pibooth
@@ -46,12 +44,12 @@ not contain your Google credentials and it can not be used by an other applicati
 than `pibooth`_.
 
 It contains the `Google Photos`_ API key (Client ID and Client Secret) generated
-by following the instructions on
-`get started with Google Photos REST APIs <https://developers.google.com/photos/library/guides/get-started>`_
+by following the instructions to
+`enable the Google Photos Library API <https://developers.google.com/photos/library/guides/get-started>`_
+(use the shortcut button).
 
-.. note:: When selecting the application type in **Step 4** of
-          **Request an OAuth 2.0 client ID**, please select **Other**.
-          There's also no need to carry out **Step 5** in that section.
+
+.. note:: When selecting the application type, please select **Desktop app**.
 
 The content of the **Credentials file** looks like this:
 
@@ -70,7 +68,7 @@ The content of the **Credentials file** looks like this:
     }
 
 .. note:: At the first connection, allow ``pibooth`` to use `Google Photos`_ in
-          the opened browser window.
+          the opened web browser window.
 
 .. --- Links ------------------------------------------------------------------
 

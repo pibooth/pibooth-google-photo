@@ -45,7 +45,7 @@ def main():
         py_modules=['pibooth_google_photo'],
         install_requires=[
             'pibooth>=2.0.0',
-            'google-auth-oauthlib>=0.4.1'
+            'google-auth-oauthlib>=0.4.2'
         ],
         options={
             'bdist_wheel':
