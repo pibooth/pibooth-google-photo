@@ -48,8 +48,7 @@ by following the instructions to
 `enable the Google Photos Library API <https://developers.google.com/photos/library/guides/get-started>`_
 (use the shortcut button).
 
-
-.. note:: When selecting the application type, please select **Desktop app**.
+:warning: When selecting the application type, please select **Desktop app**.
 
 The content of the **Credentials file** looks like this:
 
