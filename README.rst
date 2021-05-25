@@ -44,11 +44,26 @@ not contain your Google credentials and it can not be used by an other applicati
 than `pibooth`_.
 
 It contains the `Google Photos`_ API key (Client ID and Client Secret) generated
-by following the instructions to
-`enable the Google Photos Library API <https://developers.google.com/photos/library/guides/get-started>`_
-(use the shortcut button).
+by following the instructions:
 
-:warning: When selecting the application type, please select **Desktop app**.
+
+===========  ==================================================================
+ |step1|     `Go to Google Photos Library API <https://developers.google.com/photos/library/guides/get-started>`_
+             and click on ``Enable the Google Photos Library API``.
+
+ |step2|     Enter a project name (for instance **pibooth**) and click on
+             ``NEXT``.
+
+ |step3|     Enter a text to be displayed on user consent page when you will
+             start ``pibooth`` with ``pibooth-google-photo`` enabled for the
+             first time (for instance **Pibooth**) and click on ``NEXT``.
+
+ |step4|     Select the application type: **Desktop app**.and click on
+             ``CREATE``.
+
+ |step5|     Download the credential file, save it somewhere accessible by
+             `pibooth` and click on ``DONE``.
+===========  ==================================================================
 
 The content of the **Credentials file** looks like this:
 
@@ -86,3 +101,25 @@ The content of the **Credentials file** looks like this:
 .. |Downloads| image:: https://img.shields.io/pypi/dm/pibooth-google-photo?color=purple
    :target: https://pypi.org/project/pibooth-google-photo
    :alt: PyPi downloads
+
+.. --- Tuto -------------------------------------------------------------------
+
+.. |step1| image:: https://github.com/pibooth/pibooth-google-photo/blob/master/docs/images/step1_shortcut_button.png?raw=true
+   :width: 80 %
+   :alt: step1_shortcut_button
+
+.. |step2| image:: https://github.com/pibooth/pibooth-google-photo/blob/master/docs/images/step2_project_name.png?raw=true
+   :width: 80 %
+   :alt: step2_project_name
+
+.. |step3| image:: https://github.com/pibooth/pibooth-google-photo/blob/master/docs/images/step3_display_name.png?raw=true
+   :width: 80 %
+   :alt: step3_display_name
+
+.. |step4| image:: https://github.com/pibooth/pibooth-google-photo/blob/master/docs/images/step4_app_type.png?raw=true
+   :width: 80 %
+   :alt: step4_app_type
+
+.. |step5| image:: https://github.com/pibooth/pibooth-google-photo/blob/master/docs/images/step5_download.png?raw=true
+   :width: 80 %
+   :alt: step5_download
