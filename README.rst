@@ -90,9 +90,9 @@ The content of the **Credentials file** looks like this:
 
 .. _`Google Photos`: https://photos.google.com
 
-.. |PythonVersions| image:: https://img.shields.io/badge/python-2.7+ / 3.6+-red.svg
+.. |PythonVersions| image:: https://img.shields.io/badge/python-3.6+-red.svg
    :target: https://www.python.org/downloads
-   :alt: Python 2.7+/3.6+
+   :alt: Python 3.6+
 
 .. |PypiPackage| image:: https://badge.fury.io/py/pibooth-google-photo.svg
    :target: https://pypi.org/project/pibooth-google-photo
