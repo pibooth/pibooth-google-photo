@@ -14,7 +14,7 @@ import pibooth
 from pibooth.utils import LOGGER
 
 
-__version__ = "1.0.2"
+__version__ = "1.1.0"
 
 
 @pibooth.hookimpl
