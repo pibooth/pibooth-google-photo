@@ -178,9 +178,11 @@ class GooglePhotosApi(object):
         :returns: URL of the uploaded photo
         :rtype: str
         """
+        photo_url = None
+
         if not self.is_reachable():
             LOGGER.error("Google Photos upload failure: no internet connexion!")
-            return
+            return photo_url
 
         if not self._credentials:
             # Plugin was disabled at startup but activated after
@@ -191,7 +193,7 @@ class GooglePhotosApi(object):
             album_id = self.create_album(album_name)
         if not album_id:
             LOGGER.error("Google Photos upload failure: album '%s' not found!", album_name)
-            return
+            return photo_url
 
         self._session.headers["Content-type"] = "application/octet-stream"
         self._session.headers["X-Goog-Upload-Protocol"] = "raw"
@@ -202,7 +204,6 @@ class GooglePhotosApi(object):
         self._session.headers["X-Goog-Upload-File-Name"] = os.path.basename(filename)
 
         LOGGER.info("Uploading picture '%s' to Google Photos", filename)
-        photo_url = None
         upload_token = self._session.post(self.URL + '/uploads', data)
 
         if upload_token.status_code == 200 and upload_token.content:
