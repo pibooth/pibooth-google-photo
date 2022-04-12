@@ -30,7 +30,9 @@ def pibooth_configure(cfg):
 @pibooth.hookimpl
 def pibooth_startup(app, cfg):
     """Create the GooglePhotosUpload instance."""
+    app.previous_picture_url = None
     client_id_file = cfg.getpath('GOOGLE', 'client_id_file')
+
     if not client_id_file:
         LOGGER.debug("No credentials file defined in [GOOGLE][client_id_file], upload deactivated")
     elif not os.path.exists(client_id_file):
@@ -72,10 +74,9 @@ class GooglePhotosApi(object):
         self.client_id_file = client_id_file
         self.credentials_file = os.path.join(os.path.dirname(self.client_id_file), credentials_filename)
 
-        self.activated = True
         self._albums_cache = {}  # Keep cache to avoid multiple request
         self._credentials = None
-        if self.activated and self.is_reachable():
+        if self.is_reachable():
             self._session = self._get_authorized_session()
         else:
             self._session = None
@@ -177,10 +178,6 @@ class GooglePhotosApi(object):
         :returns: URL of the uploaded photo
         :rtype: str
         """
-        if not self.activated:
-            # Invalid credentials file
-            return
-
         if not self.is_reachable():
             LOGGER.error("Google Photos upload failure: no internet connexion!")
             return
