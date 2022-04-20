@@ -224,9 +224,15 @@ class GooglePhotosApi(object):
                     LOGGER.error("Google Photos upload failure: can not add '%s' to library: %s",
                                  os.path.basename(filename), status["message"])
                 else:
-                    photo_url = resp["newMediaItemResults"][0]['mediaItem'].get('productUrl')
                     LOGGER.info("Google Photos upload successful: '%s' added to album '%s'",
                                 os.path.basename(filename), album_name)
+
+                    photo_id = resp["newMediaItemResults"][0]['mediaItem']['id']
+                    resp = self._session.get(self.URL + '/mediaItems/' + photo_id)
+                    if resp.status_code == 200:
+                        photo_url = resp.json()['baseUrl']
+                    else:
+                        LOGGER.warning("Google Photos can not get temporary URL to uploaded picture")
             else:
                 LOGGER.error("Google Photos upload failure: can not add '%s' to library",
                              os.path.basename(filename))
