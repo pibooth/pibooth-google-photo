@@ -40,6 +40,7 @@ def pibooth_startup(app, cfg):
     elif client_id_file and os.path.getsize(client_id_file) == 0:
         LOGGER.error("Empty file [GOOGLE][client_id_file]='%s', please check config", client_id_file)
     else:
+        LOGGER.info("Initialize Google Photos connection")
         app.google_photos = GooglePhotosApi(client_id_file)
 
 
@@ -227,12 +228,7 @@ class GooglePhotosApi(object):
                     LOGGER.info("Google Photos upload successful: '%s' added to album '%s'",
                                 os.path.basename(filename), album_name)
 
-                    photo_id = resp["newMediaItemResults"][0]['mediaItem']['id']
-                    resp = self._session.get(self.URL + '/mediaItems/' + photo_id)
-                    if resp.status_code == 200:
-                        photo_url = resp.json()['baseUrl']
-                    else:
-                        LOGGER.warning("Google Photos can not get temporary URL to uploaded picture")
+                    photo_url = self.get_temp_url(resp["newMediaItemResults"][0]['mediaItem']['id'])
             else:
                 LOGGER.error("Google Photos upload failure: can not add '%s' to library",
                              os.path.basename(filename))
@@ -252,3 +248,16 @@ class GooglePhotosApi(object):
             pass
 
         return photo_url
+
+    def get_temp_url(self, photo_id):
+        """
+        Get the temporary URL for the picture (valid 1 hour only).
+        """
+        resp = self._session.get(self.URL + '/mediaItems/' + photo_id)
+        if resp.status_code == 200:
+            url = resp.json()['baseUrl']
+            LOGGER.debug('Temporary picture URL -> %s', url)
+            return url
+
+        LOGGER.warning("Can not get temporary URL for Google Photos")
+        return None

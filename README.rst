@@ -41,6 +41,8 @@ Picture URL
 Uploaded picture URL is set to ``app.previous_picture_url`` attribute at the end of
 `processing` state (``state_processing_exit`` hook).
 
+.. warning:: for security reason, URL is valid for only 1 hour.
+
 Grant secured access
 --------------------
 
