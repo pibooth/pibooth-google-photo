@@ -84,7 +84,6 @@ class GooglePhotosApi(object):
         self.token_cache_file = token_file
 
         self._albums_cache = {}  # Keep cache to avoid multiple request
-        self._credentials = None
         if self.is_reachable():
             self._session = self._get_authorized_session()
         else:
@@ -102,27 +101,28 @@ class GooglePhotosApi(object):
 
     def _get_authorized_session(self):
         """Create credentials file if required and open a new session."""
+        token = None
         if not os.path.exists(self.token_cache_file) or \
                 os.path.getsize(self.token_cache_file) == 0:
-            self._credentials = self._auth()
+            token = self._auth()
             LOGGER.debug("First use of pibooth-google-photo: generate credentials file %s",
                          self.token_cache_file)
             try:
-                self._save_credentials(self._credentials)
+                self._save_credentials(token)
             except OSError as err:
                 LOGGER.warning("Can not save Google Photos credentials in '%s': %s",
                                self.token_cache_file, err)
         else:
             try:
-                self._credentials = Credentials.from_authorized_user_file(self.token_cache_file, self.SCOPES)
-                if self._credentials.expired:
-                    self._credentials.refresh(Request())
-                    self._save_credentials(self._credentials)
+                token = Credentials.from_authorized_user_file(self.token_cache_file, self.SCOPES)
+                if token.expired:
+                    token.refresh(Request())
+                    self._save_credentials(token)
             except ValueError:
                 LOGGER.debug("Error loading Google Photos OAuth tokens: incorrect format")
 
-        if self._credentials:
-            return AuthorizedSession(self._credentials)
+        if token:
+            return AuthorizedSession(token)
         return None
 
     def is_reachable(self):
@@ -195,7 +195,7 @@ class GooglePhotosApi(object):
             LOGGER.error("Google Photos upload failure: no internet connexion!")
             return photo_id
 
-        if not self._credentials:
+        if not self._session:
             # Plugin was disabled at startup but activated after
             self._session = self._get_authorized_session()
 
