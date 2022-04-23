@@ -101,28 +101,25 @@ class GooglePhotosApi(object):
 
     def _get_authorized_session(self):
         """Create credentials file if required and open a new session."""
-        token = None
+        credentials = None
         if not os.path.exists(self.token_cache_file) or \
                 os.path.getsize(self.token_cache_file) == 0:
-            token = self._auth()
-            LOGGER.debug("First use of pibooth-google-photo: generate credentials file %s",
+            credentials = self._auth()
+            LOGGER.debug("First use of pibooth-google-photo: store token in file %s",
                          self.token_cache_file)
             try:
-                self._save_credentials(token)
+                self._save_credentials(credentials)
             except OSError as err:
-                LOGGER.warning("Can not save Google Photos credentials in '%s': %s",
+                LOGGER.warning("Can not save Google Photos token in file '%s': %s",
                                self.token_cache_file, err)
         else:
-            try:
-                token = Credentials.from_authorized_user_file(self.token_cache_file, self.SCOPES)
-                if token.expired:
-                    token.refresh(Request())
-                    self._save_credentials(token)
-            except ValueError:
-                LOGGER.debug("Error loading Google Photos OAuth tokens: incorrect format")
+            credentials = Credentials.from_authorized_user_file(self.token_cache_file, self.SCOPES)
+            if credentials.expired:
+                credentials.refresh(Request())
+                self._save_credentials(credentials)
 
-        if token:
-            return AuthorizedSession(token)
+        if credentials:
+            return AuthorizedSession(credentials)
         return None
 
     def is_reachable(self):
