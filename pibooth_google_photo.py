@@ -41,7 +41,7 @@ def pibooth_startup(app, cfg):
         LOGGER.error("Empty file [GOOGLE][client_id_file]='%s', please check config", client_id_file)
     else:
         LOGGER.info("Initialize Google Photos connection")
-        app.google_photos = GooglePhotosApi(client_id_file)
+        app.google_photos = GooglePhotosApi(client_id_file, cfg.join_path(".google_token.json"))
 
 
 @pibooth.hookimpl
@@ -63,7 +63,7 @@ class GooglePhotosApi(object):
 
     :param client_id: file generated from google API
     :type client_id: str
-    :param credentials_filename: name of the file to store authorization
+    :param credentials_filename: name of the file to store authorization / token
     :type credentials_filename: str
     """
 
@@ -71,9 +71,9 @@ class GooglePhotosApi(object):
     SCOPES = ['https://www.googleapis.com/auth/photoslibrary',
               'https://www.googleapis.com/auth/photoslibrary.sharing']
 
-    def __init__(self, client_id_file, credentials_filename="google_credentials.dat"):
+    def __init__(self, client_id_file, credentials_filename="token.json"):
         self.client_id_file = client_id_file
-        self.credentials_file = os.path.join(os.path.dirname(self.client_id_file), credentials_filename)
+        self.credentials_file = credentials_filename
 
         self._albums_cache = {}  # Keep cache to avoid multiple request
         self._credentials = None
