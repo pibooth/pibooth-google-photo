@@ -18,7 +18,7 @@ import pibooth
 from pibooth.utils import LOGGER
 
 
-__version__ = "1.2.0"
+__version__ = "1.2.1"
 
 SECTION = 'GOOGLE'
 
@@ -131,7 +131,7 @@ class GooglePhotosApi(object):
     def is_reachable(self):
         """Check if Google Photos is reachable."""
         try:
-            return requests.head('https://photos.google.com').status_code == 200
+            return requests.head('https://photos.google.com').status_code in (200, 302)
         except requests.ConnectionError:
             return False
 
