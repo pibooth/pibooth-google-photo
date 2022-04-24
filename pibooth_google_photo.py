@@ -6,9 +6,13 @@ import json
 import os.path
 
 import requests
-from google_auth_oauthlib.flow import InstalledAppFlow
-from google.auth.transport.requests import AuthorizedSession, Request
-from google.oauth2.credentials import Credentials
+try:
+    from google_auth_oauthlib.flow import InstalledAppFlow
+    from google.auth.transport.requests import AuthorizedSession, Request
+    from google.oauth2.credentials import Credentials
+except ImportError:
+    InstalledAppFlow = None
+    pass  # When running the setup.py, google-auth-oauthlib is not yet installed
 
 import pibooth
 from pibooth.utils import LOGGER
