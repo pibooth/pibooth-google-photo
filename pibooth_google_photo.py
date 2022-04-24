@@ -16,14 +16,16 @@ from pibooth.utils import LOGGER
 
 __version__ = "1.2.0"
 
+SECTION = 'GOOGLE'
+
 
 @pibooth.hookimpl
 def pibooth_configure(cfg):
     """Declare the new configuration options"""
-    cfg.add_option('GOOGLE', 'album_name', "Pibooth",
+    cfg.add_option(SECTION, 'album_name', "Pibooth",
                    "Album where pictures are uploaded",
                    "Album name", "Pibooth")
-    cfg.add_option('GOOGLE', 'client_id_file', '',
+    cfg.add_option(SECTION, 'client_id_file', '',
                    "Credentials file downloaded from Google API")
 
 
@@ -31,16 +33,16 @@ def pibooth_configure(cfg):
 def pibooth_startup(app, cfg):
     """Create the GooglePhotosUpload instance."""
     app.previous_picture_url = None
-    client_id_file = cfg.getpath('GOOGLE', 'client_id_file')
+    client_id_file = cfg.getpath(SECTION, 'client_id_file')
 
     if not client_id_file:
         LOGGER.debug("No credentials file defined in [GOOGLE][client_id_file], upload deactivated")
     elif not os.path.exists(client_id_file):
-        LOGGER.error("No such file [GOOGLE][client_id_file]='%s', please check config",
-                     client_id_file)
+        LOGGER.error("No such file [%s][client_id_file]='%s', please check config",
+                     SECTION, client_id_file)
     elif client_id_file and os.path.getsize(client_id_file) == 0:
-        LOGGER.error("Empty file [GOOGLE][client_id_file]='%s', please check config",
-                     client_id_file)
+        LOGGER.error("Empty file [%s][client_id_file]='%s', please check config",
+                     SECTION, client_id_file)
     else:
         LOGGER.info("Initialize Google Photos connection")
         app.google_photos = GooglePhotosApi(client_id_file, cfg.join_path(".google_token.json"))
@@ -51,7 +53,7 @@ def state_processing_exit(app, cfg):
     """Upload picture to google photo album"""
     if hasattr(app, 'google_photos'):
         photo_id = app.google_photos.upload(app.previous_picture_file,
-                                            cfg.get('GOOGLE', 'album_name'))
+                                            cfg.get(SECTION, 'album_name'))
 
         if photo_id is not None:
             app.previous_picture_url = app.google_photos.get_temp_url(photo_id)
