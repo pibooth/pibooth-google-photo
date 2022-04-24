@@ -125,7 +125,7 @@ class GooglePhotosApi(object):
     def is_reachable(self):
         """Check if Google Photos is reachable."""
         try:
-            return requests.get('https://photos.google.com').status_code == 200
+            return requests.head('https://photos.google.com').status_code == 200
         except requests.ConnectionError:
             return False
 
