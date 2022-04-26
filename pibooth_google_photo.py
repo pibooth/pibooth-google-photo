@@ -2,6 +2,7 @@
 
 """Pibooth plugin to upload pictures on Google Photos."""
 
+import os
 import json
 import os.path
 
@@ -21,6 +22,7 @@ from pibooth.utils import LOGGER
 __version__ = "1.2.1"
 
 SECTION = 'GOOGLE'
+CACHE_FILE = '.google_token.json'
 
 
 @pibooth.hookimpl
@@ -31,6 +33,14 @@ def pibooth_configure(cfg):
                    "Album name", "Pibooth")
     cfg.add_option(SECTION, 'client_id_file', '',
                    "Credentials file downloaded from Google API")
+
+
+@pibooth.hookimpl
+def pibooth_reset(cfg, hard):
+    """Remove cached token file."""
+    if hard and os.path.isfile(cfg.join_path(CACHE_FILE)):
+        LOGGER.info("Remove Google Photos autorizations '%s'", cfg.join_path(CACHE_FILE))
+        os.remove(cfg.join_path(CACHE_FILE))
 
 
 @pibooth.hookimpl
@@ -49,7 +59,7 @@ def pibooth_startup(app, cfg):
                      SECTION, client_id_file)
     else:
         LOGGER.info("Initialize Google Photos connection")
-        app.google_photos = GooglePhotosApi(client_id_file, cfg.join_path(".google_token.json"))
+        app.google_photos = GooglePhotosApi(client_id_file, cfg.join_path(CACHE_FILE))
 
 
 @pibooth.hookimpl
