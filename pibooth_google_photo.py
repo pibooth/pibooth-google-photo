@@ -19,7 +19,7 @@ import pibooth
 from pibooth.utils import LOGGER
 
 
-__version__ = "1.2.1"
+__version__ = "1.2.2"
 
 SECTION = 'GOOGLE'
 CACHE_FILE = '.google_token.json'
@@ -112,22 +112,22 @@ class GooglePhotosApi(object):
 
     def _save_credentials(self, credentials):
         """Save credentials in a file to use API without need to allow acces."""
-        with open(self.token_cache_file, 'w') as fp:
-            fp.write(credentials.to_json())
+        try:
+            with open(self.token_cache_file, 'w') as fp:
+                fp.write(credentials.to_json())
+        except OSError as err:
+            LOGGER.warning("Can not save Google Photos token in file '%s': %s",
+                           self.token_cache_file, err)
 
     def _get_authorized_session(self):
         """Create credentials file if required and open a new session."""
         credentials = None
         if not os.path.exists(self.token_cache_file) or \
                 os.path.getsize(self.token_cache_file) == 0:
-            credentials = self._auth()
             LOGGER.debug("First use of plugin, store token in file '%s'",
                          self.token_cache_file)
-            try:
-                self._save_credentials(credentials)
-            except OSError as err:
-                LOGGER.warning("Can not save Google Photos token in file '%s': %s",
-                               self.token_cache_file, err)
+            credentials = self._auth()
+            self._save_credentials(credentials)
         else:
             credentials = Credentials.from_authorized_user_file(self.token_cache_file, self.SCOPES)
             with open(self.client_id_file) as fd:
@@ -137,6 +137,7 @@ class GooglePhotosApi(object):
                 LOGGER.debug("Application key or secret has changed, store new token in file '%s'",
                              self.token_cache_file)
                 credentials = self._auth()
+                self._save_credentials(credentials)
             elif credentials.expired:
                 credentials.refresh(Request())
                 self._save_credentials(credentials)
