@@ -121,7 +121,7 @@ class GooglePhotosApi(object):
         if not os.path.exists(self.token_cache_file) or \
                 os.path.getsize(self.token_cache_file) == 0:
             credentials = self._auth()
-            LOGGER.debug("First use of pibooth-google-photo: store token in file %s",
+            LOGGER.debug("First use of plugin, store token in file '%s'",
                          self.token_cache_file)
             try:
                 self._save_credentials(credentials)
@@ -130,7 +130,14 @@ class GooglePhotosApi(object):
                                self.token_cache_file, err)
         else:
             credentials = Credentials.from_authorized_user_file(self.token_cache_file, self.SCOPES)
-            if credentials.expired:
+            with open(self.client_id_file) as fd:
+                data = json.load(fd)
+            if credentials.client_id != data.get('client_id') or\
+                    credentials.client_secret != data.get('client_secret'):
+                LOGGER.debug("Application key or secret has changed, store new token in file '%s'",
+                             self.token_cache_file)
+                credentials = self._auth()
+            elif credentials.expired:
                 credentials.refresh(Request())
                 self._save_credentials(credentials)
 
