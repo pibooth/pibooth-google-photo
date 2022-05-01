@@ -19,7 +19,7 @@ import pibooth
 from pibooth.utils import LOGGER
 
 
-__version__ = "1.2.2"
+__version__ = "1.2.3"
 
 SECTION = 'GOOGLE'
 CACHE_FILE = '.google_token.json'
@@ -132,6 +132,11 @@ class GooglePhotosApi(object):
             credentials = Credentials.from_authorized_user_file(self.token_cache_file, self.SCOPES)
             with open(self.client_id_file) as fd:
                 data = json.load(fd)
+                if "web" in data:
+                    data = data["web"]
+                elif "installed" in data:
+                    data = data["installed"]
+
             if credentials.client_id != data.get('client_id') or\
                     credentials.client_secret != data.get('client_secret'):
                 LOGGER.debug("Application key or secret has changed, store new token in file '%s'",
